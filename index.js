@@ -8,14 +8,6 @@ import { registerOutboundRoutes } from './outbound-calls.js';
 // Load environment variables from .env file
 dotenv.config();
 
-const { 
-  ELEVENLABS_API_KEY, 
-  ELEVENLABS_AGENT_ID,
-  TWILIO_ACCOUNT_SID,
-  TWILIO_AUTH_TOKEN,
-  TWILIO_PHONE_NUMBER
-} = process.env;
-
 // Initialize Fastify server
 const fastify = Fastify({
   logger: true // Enable logging

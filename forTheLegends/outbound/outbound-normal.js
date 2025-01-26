@@ -17,13 +17,13 @@ export function registerOutboundRoutes(fastify) {
 
   // Route for outbound calls
   fastify.post("/outgoing-call", async (request, reply) => {
-    const {  number } = request.body;
+    const { firstMessage, number } = request.body;
     console.log("[CALL] Initiating outbound call to:", number);
-    const firstMessage = "Hola buen dia le hablo de Getnet para ofrecerle una terminal para su negocio le interesaria?"
+
     try {
       const call = await twilioClient.calls.create({
         from: TWILIO_PHONE_NUMBER,
-        to: +528662367673,
+        to: number,
         url: `https://${request.headers.host}/outgoing-call-twiml?firstMessage=${encodeURIComponent(firstMessage)}&number=${encodeURIComponent(number)}`
       });
       console.log("[CALL] Call initiated successfully:", call.sid);
