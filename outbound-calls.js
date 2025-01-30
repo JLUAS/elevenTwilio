@@ -588,8 +588,11 @@ export async function registerOutboundRoutes(fastify){
       if (numeroGlobal) {
         const numero = numeroGlobal;      
         const nombre = nombreGlobal
+        if(AnsweredBy!="human"){
+          await endCall()
+          console.log("Llamada no contestada por humano")
+        }
         if (['completed'].includes(CallStatus)) {
-          console.log("Answered by",AnsweredBy)
           await endCall()
         }else{
           eliminarNumeros(numero)
