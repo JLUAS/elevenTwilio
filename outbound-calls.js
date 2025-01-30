@@ -585,11 +585,11 @@ export async function registerOutboundRoutes(fastify){
     try {
       const { CallSid, CallStatus, AnsweredBy, Duration } = request.body;
       gestorLlamadas.callSid = CallSid
-      console.log(AnsweredBy)
       if (numeroGlobal) {
         const numero = numeroGlobal;      
         const nombre = nombreGlobal
         if (['completed'].includes(CallStatus)) {
+          console.log("Answered by",AnsweredBy)
           await endCall()
         }else{
           eliminarNumeros(numero)
