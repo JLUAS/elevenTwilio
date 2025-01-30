@@ -483,7 +483,7 @@ export async function registerOutboundRoutes(fastify){
         }
         if (numero != 5212345678901) {
           connection.query(
-            "INSERT INTO NumerosContactadosTest (nombre, numero, candidato) VALUES (?, ?, ?)",
+            "INSERT INTO NumerosContactados (nombre, numero, candidato) VALUES (?, ?, ?)",
             [nombre, numero, candidato],
             (err, result) => {
               if (err) {
@@ -519,7 +519,7 @@ export async function registerOutboundRoutes(fastify){
     const numero = numeroGlobal
     eliminarNumeros(numero);
     const tiempo = timer.endCall();
-    await twilioClient.calls(CallSid)
+    await twilioClient.calls(gestorLlamadas.callSid)
       .update({ status: 'completed' })
       .then(call => console.log("Llamada colgada:", call.sid))
       .catch(error => console.error("Error al colgar la llamada:", error));
@@ -537,7 +537,7 @@ export async function registerOutboundRoutes(fastify){
       [numero],
       (err, results) => {
         if (err) {
-          console.error("Error al consultar en NumerosContactadosTest:", err);
+          console.error("Error al consultar en NumerosContactados:", err);
           return;
         }
 
@@ -592,7 +592,7 @@ export async function registerOutboundRoutes(fastify){
             .catch(error => console.error("Error al colgar la llamada:", error));
           const fecha = new Date().toISOString();
           pool.query(
-            'INSERT INTO NumerosInaccesiblesTest (numero, fecha) VALUES (?,?)',
+            'INSERT INTO NumerosInaccesibles (numero, fecha) VALUES (?,?)',
             [numero, fecha],
             (err) => {
               if (err) console.error("Error eliminando llamada en progreso:", err);
