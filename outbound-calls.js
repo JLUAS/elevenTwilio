@@ -97,7 +97,7 @@ export async function registerOutboundRoutes(fastify){
       pool.getConnection((err, connection) => {
         if (err) return reject(err);
   
-        const query = `SELECT * FROM NuevosNumeros ORDER BY id ASC`;
+        const query = `SELECT * FROM NuevosNumerosTest ORDER BY id ASC`;
         
         connection.query(query, (err, results) => {
           connection.release();
@@ -125,7 +125,7 @@ export async function registerOutboundRoutes(fastify){
 
           const query = `
             SELECT nombre, numero
-            FROM NuevosNumeros   
+            FROM NuevosNumerosTest   
             ORDER BY id ASC
             LIMIT 1
           `;
@@ -165,7 +165,7 @@ export async function registerOutboundRoutes(fastify){
   }
 
   function eliminarNumeros(numero) {
-    const query = "DELETE FROM NuevosNumeros    WHERE numero = ?";
+    const query = "DELETE FROM NuevosNumerosTest    WHERE numero = ?";
     pool.query(query, [numero], (err, result) => {
       if (err) {
         console.error("Error borrando usuario:", err);
@@ -492,7 +492,7 @@ export async function registerOutboundRoutes(fastify){
         }
         if (numero != 5212345678901) {
           connection.query(
-            "INSERT INTO NumerosContactados (nombre, numero, candidato) VALUES (?, ?, ?)",
+            "INSERT INTO NumerosContactadosTest (nombre, numero, candidato) VALUES (?, ?, ?)",
             [nombre, numero, candidato],
             (err, result) => {
               if (err) {
@@ -542,20 +542,20 @@ export async function registerOutboundRoutes(fastify){
     );
 
     pool.query(
-      'SELECT * FROM NumerosContactados WHERE numero = ?',
+      'SELECT * FROM NumerosContactadosTest WHERE numero = ?',
       [numero],
       (err, results) => {
         if (err) {
-          console.error("Error al consultar en NumerosContactados:", err);
+          console.error("Error al consultar en NumerosContactadosTest:", err);
           return;
         }
 
         if (results.length > 0) {
           pool.query(
-            'UPDATE NumerosContactados SET tiempo = ? WHERE numero = ?',
+            'UPDATE NumerosContactadosTest SET tiempo = ? WHERE numero = ?',
             [tiempo, numero],
             (err) => {
-              if (err) console.error("Error insertando en NumerosContactados:", err);
+              if (err) console.error("Error insertando en NumerosContactadosTest:", err);
             }
           );
         } else {
@@ -563,10 +563,10 @@ export async function registerOutboundRoutes(fastify){
           const fecha = new Date().toISOString();
 
           pool.query(
-            'INSERT INTO NumerosContactados (nombre, numero, candidato, tiempo, fecha) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO NumerosContactadosTest (nombre, numero, candidato, tiempo, fecha) VALUES (?, ?, ?, ?, ?)',
             [nombre, numero, candidato, tiempo, fecha],
             (err) => {
-              if (err) console.error("Error insertando en NumerosContactados:", err);
+              if (err) console.error("Error insertando en NumerosContactadosTest:", err);
             }
           );
         }
@@ -579,8 +579,6 @@ export async function registerOutboundRoutes(fastify){
   fastify.all("/endCall", async (req, res) => {
     await endCall()
   });
-
-
 
   // Modificar el endpoint /call-status
   fastify.all("/call-status", async (request, reply) => {
@@ -601,7 +599,7 @@ export async function registerOutboundRoutes(fastify){
             .catch(error => console.error("Error al colgar la llamada:", error));
           const fecha = new Date().toISOString();
           pool.query(
-            'INSERT INTO NumerosInaccesibles (numero, fecha) VALUES (?,?)',
+            'INSERT INTO NumerosInaccesiblesTest (numero, fecha) VALUES (?,?)',
             [numero, fecha],
             (err) => {
               if (err) console.error("Error eliminando llamada en progreso:", err);
@@ -725,7 +723,6 @@ export async function registerOutboundRoutes(fastify){
         ws.on("close", () => {
           console.log("[Twilio] Client disconnected");
           if (elevenLabsWs?.readyState === WebSocket.OPEN) {
-            callEnded = true
             elevenLabsWs.close();
           }
         });
