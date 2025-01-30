@@ -514,6 +514,65 @@ export async function registerOutboundRoutes(fastify){
     });
   });
 
+  async function endCall(){
+    const nombre = nombreGlobal
+    const numero = numeroGlobal
+    eliminarNumeros(numero);
+    const tiempo = timer.endCall();
+    await twilioClient.calls(CallSid)
+      .update({ status: 'completed' })
+      .then(call => console.log("Llamada colgada:", call.sid))
+      .catch(error => console.error("Error al colgar la llamada:", error));
+
+    pool.query(
+      'DELETE FROM LlamadasEnProgreso WHERE numero = ?',
+      [numero],
+      (err) => {
+        if (err) console.error("Error eliminando llamada en progreso:", err);
+      }
+    );
+
+    pool.query(
+      'SELECT * FROM NumerosContactados WHERE numero = ?',
+      [numero],
+      (err, results) => {
+        if (err) {
+          console.error("Error al consultar en NumerosContactadosTest:", err);
+          return;
+        }
+
+        if (results.length > 0) {
+          pool.query(
+            'UPDATE NumerosContactados SET tiempo = ? WHERE numero = ?',
+            [tiempo, numero],
+            (err) => {
+              if (err) console.error("Error insertando en NumerosContactados:", err);
+            }
+          );
+        } else {
+          const candidato = 'no interesado';
+          const fecha = new Date().toISOString();
+
+          pool.query(
+            'INSERT INTO NumerosContactados (nombre, numero, candidato, tiempo, fecha) VALUES (?, ?, ?, ?, ?)',
+            [nombre, numero, candidato, tiempo, fecha],
+            (err) => {
+              if (err) console.error("Error insertando en NumerosContactados:", err);
+            }
+          );
+        }
+      }
+    );
+
+    gestorLlamadas.procesarSiguiente();
+  }
+
+  fastify.all("/endCall", async (req, res) => {
+    await endCall()
+  });
+
+
+
   // Modificar el endpoint /call-status
   fastify.all("/call-status", async (request, reply) => {
     try {
@@ -522,57 +581,9 @@ export async function registerOutboundRoutes(fastify){
 
       if (numeroGlobal) {
         const numero = numeroGlobal;      
-        
+        const nombre = nombreGlobal
         if (['completed'].includes(CallStatus)) {
-          eliminarNumeros(numero);
-          const tiempo = timer.endCall();
-          await twilioClient.calls(CallSid)
-            .update({ status: 'completed' })
-            .then(call => console.log("Llamada colgada:", call.sid))
-            .catch(error => console.error("Error al colgar la llamada:", error));
-      
-          pool.query(
-            'DELETE FROM LlamadasEnProgreso WHERE numero = ?',
-            [numero],
-            (err) => {
-              if (err) console.error("Error eliminando llamada en progreso:", err);
-            }
-          );
-      
-          pool.query(
-            'SELECT * FROM NumerosContactadosTest WHERE numero = ?',
-            [numero],
-            (err, results) => {
-              if (err) {
-                console.error("Error al consultar en NumerosContactadosTest:", err);
-                return;
-              }
-      
-              if (results.length > 0) {
-                pool.query(
-                  'UPDATE NumerosContactadosTest SET tiempo = ? WHERE numero = ?',
-                  [tiempo, numero],
-                  (err) => {
-                    if (err) console.error("Error insertando en NumerosContactadosTest:", err);
-                  }
-                );
-              } else {
-                const nombre = llamada.nombre; 
-                const candidato = 'no interesado';
-                const fecha = new Date().toISOString();
-      
-                pool.query(
-                  'INSERT INTO NumerosContactadosTest (nombre, numero, candidato, tiempo, fecha) VALUES (?, ?, ?, ?, ?)',
-                  [nombre, numero, candidato, tiempo, fecha],
-                  (err) => {
-                    if (err) console.error("Error insertando en NumerosContactadosTest:", err);
-                  }
-                );
-              }
-            }
-          );
-      
-          gestorLlamadas.procesarSiguiente();
+          await endCall()
         }else{
           eliminarNumeros(numero)
           await twilioClient.calls(CallSid)
