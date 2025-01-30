@@ -97,7 +97,7 @@ export async function registerOutboundRoutes(fastify){
       pool.getConnection((err, connection) => {
         if (err) return reject(err);
   
-        const query = `SELECT * FROM NuevosNumerosTest ORDER BY id ASC`;
+        const query = `SELECT * FROM NuevosNumeros ORDER BY id ASC`;
         
         connection.query(query, (err, results) => {
           connection.release();
@@ -125,7 +125,7 @@ export async function registerOutboundRoutes(fastify){
 
           const query = `
             SELECT nombre, numero
-            FROM NuevosNumerosTest   
+            FROM NuevosNumeros   
             ORDER BY id ASC
             LIMIT 1
           `;
@@ -165,7 +165,7 @@ export async function registerOutboundRoutes(fastify){
   }
 
   function eliminarNumeros(numero) {
-    const query = "DELETE FROM NuevosNumerosTest    WHERE numero = ?";
+    const query = "DELETE FROM NuevosNumeros    WHERE numero = ?";
     pool.query(query, [numero], (err, result) => {
       if (err) {
         console.error("Error borrando usuario:", err);
