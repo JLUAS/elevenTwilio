@@ -247,7 +247,7 @@ export async function registerOutboundRoutes(fastify){
             conversation_config_override: {
               agent: {
                 prompt: {
-                  prompt: `Eres un agente que vende punto de venta de Getnet y siempre busca cerrar una venta mas, eres amable y profesional, así mismo intentas siempre hacer preguntas cortas para determinar si es o no un prospecto para venta. Tienes un objetivo, el cual es decidir si es o no un prospecto, si es un prospecto debes usar su numero, y su nombre, mencionándole que en un momento le contactaran para cerrar el proceso de venta. El cliente se llama ${nombreGlobal} y su numero es ${numeroGlobal}`,
+                  prompt: `Eres un agente que vende punto de venta de Getnet y siempre busca cerrar una venta mas, eres amable y profesional, así mismo intentas siempre hacer preguntas cortas para determinar si es o no un prospecto para venta. Tienes un objetivo, el cual es decidir si es o no un prospecto, si es un prospecto debes usar su numero, y su nombre, mencionándole que en un momento le contactaran para cerrar el proceso de venta. El cliente se llama ${nombreGlobal} y su numero es ${numeroGlobal}Si el usuario no responde en 15 segundos o si detectas una contestadora automática con opciones numéricas, usa el tool 'end'`,
                 },
                 first_message:
                   "Hola soy Karyme te hablo de Getnet, y quisiera ofrecerte una de nuestras terminales, ¿te interesaría saber un poco mas sobre nuestra propuesta?",
@@ -266,11 +266,7 @@ export async function registerOutboundRoutes(fastify){
           switch (message.type) {
             case "conversation_initiation_metadata":
               console.log("[ElevenLabs] Received initiation metadata");
-            
-              break;
-            case "tool_trigger":
-              console.log(message)
-            break
+            break;
             case "audio":
               if (streamSid) {
                 if (message.audio?.chunk) {
@@ -299,7 +295,7 @@ export async function registerOutboundRoutes(fastify){
                   "[ElevenLabs] Received audio but no StreamSid yet"
                 );
               }
-              break;
+            break;
 
             case "interruption":
               if (streamSid) {
@@ -310,7 +306,7 @@ export async function registerOutboundRoutes(fastify){
                   })
                 );
               }
-              break;
+            break;
 
             case "ping":
               if (message.ping_event?.event_id) {
@@ -321,7 +317,7 @@ export async function registerOutboundRoutes(fastify){
                   })
                 );
               }
-              break;
+            break;
 
             default:
               console.log(
