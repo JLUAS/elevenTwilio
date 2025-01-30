@@ -268,9 +268,9 @@ export async function registerOutboundRoutes(fastify){
               console.log("[ElevenLabs] Received initiation metadata");
             
               break;
-            // case "agent_response":
-
-            // break
+            case "agent_response":
+              console.log(message)
+            break
             case "audio":
               if (streamSid) {
                 if (message.audio?.chunk) {
