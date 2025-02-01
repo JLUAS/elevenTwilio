@@ -324,7 +324,7 @@ export async function registerOutboundRoutes(fastify) {
         if (!nombre) {
             return reply.code(400).send({ error: "No hay más números disponibles" });
         }
-
+        
         const formattedNumber = numero.startsWith('+52') ? numero : `+${numero}`;
 
         // Attempt to make the call
