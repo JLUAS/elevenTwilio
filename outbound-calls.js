@@ -314,18 +314,27 @@ export async function registerOutboundRoutes(fastify) {
     try {
         const status = await getStatus();
         if (status !== 1) {
-            return reply.code(403).send({ error: "Las llamadas están desactivadas." });
+            console.log("Las llamadas están desactivadas.");
+            return;
         }
 
         const { nombre, numero } = await obtenerNumeros();
         globalName = nombre;
         globalNumber = numero;
 
-        if (!nombre) {
-            return reply.code(400).send({ error: "No hay más números disponibles" });
+        // Ensure numero is a valid string
+        if (!nombre || !numero) {
+            console.log("No hay más números disponibles.");
+            return;
         }
-        
-        const formattedNumber = numero.startsWith('+52') ? numero : `+${numero}`;
+
+        if (typeof numero !== "string") {
+            console.log(`Número inválido detectado: ${numero}, eliminándolo...`);
+            await eliminarNumeros(globalNumber);
+            return realizarLlamada();  // Call next number
+        }
+
+        const formattedNumber = numero.startsWith("+52") ? numero : `+${numero}`;
 
         // Attempt to make the call
         const call = await twilioClient.calls.create({
@@ -333,9 +342,9 @@ export async function registerOutboundRoutes(fastify) {
             to: formattedNumber,
             url: `https://eleventwilio.onrender.com/outbound-call-twiml`,
             statusCallback: `https://eleventwilio.onrender.com/call-status`,
-            statusCallbackEvent: ['completed', 'failed', 'busy', 'no-answer'],
-            statusCallbackMethod: 'POST',
-            machineDetection: 'DetectMessageEnd',
+            statusCallbackEvent: ["completed", "failed", "busy", "no-answer"],
+            statusCallbackMethod: "POST",
+            machineDetection: "DetectMessageEnd",
             timeout: 15,
             answerOnBridge: true
         });
@@ -352,16 +361,17 @@ export async function registerOutboundRoutes(fastify) {
             return realizarLlamada();  // Call next number
         }
 
-        // Handle other connection errors
-        if (error.code === 'ECONNREFUSED') {
+        // Handle connection issues
+        if (error.code === "ECONNREFUSED") {
             console.log("Error de conexión con Twilio, reintentando en 5 segundos...");
             setTimeout(realizarLlamada, 5000);
         }
 
-        // If the error is unknown, do not loop infinitely
-        return reply.code(500).send({ error: "Error desconocido al realizar la llamada." });
+        // Generic error handling
+        console.log("Error desconocido al realizar la llamada.");
     }
 }
+
 
 
   const timer = new CallTimer();
