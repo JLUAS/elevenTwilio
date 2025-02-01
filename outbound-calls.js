@@ -325,13 +325,6 @@ export async function registerOutboundRoutes(fastify) {
             return reply.code(400).send({ error: "No hay más números disponibles" });
         }
 
-        // Ensure the number has the correct length
-        if (numero.length !== 12) {
-            console.log(`Número inválido: ${numero}, eliminándolo...`);
-            await eliminarNumeros(globalNumber);
-            return realizarLlamada();  // Call next number
-        }
-
         const formattedNumber = numero.startsWith('+52') ? numero : `+${numero}`;
 
         // Attempt to make the call
