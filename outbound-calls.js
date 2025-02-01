@@ -324,7 +324,7 @@ export async function registerOutboundRoutes(fastify) {
     }
     if(numero.length != 12){
       eliminarNumeros(globalNumber)
-      return reply.code(400).send({error: "Numero sin formato correcto"})
+      realizarLlamada()
     }
 
     const formattedNumber = globalName.startsWith('+52') ? globalNumber : `+${globalNumber}`;
