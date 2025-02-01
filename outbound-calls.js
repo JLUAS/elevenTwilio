@@ -327,8 +327,8 @@ export async function registerOutboundRoutes(fastify) {
       const call = await twilioClient.calls.create({
         from: TWILIO_PHONE_NUMBER,
         to: formattedNumber,
-        url: `https://humorous-oryx-ace.ngrok-free.app/outbound-call-twiml`,
-        statusCallback: `https://humorous-oryx-ace.ngrok-free.app/call-status`,
+        url: `https://eleventwilio.onrender.com/outbound-call-twiml`,
+        statusCallback: `https://eleventwilio.onrender.com/call-status`,
         statusCallbackEvent: ['completed', 'failed', 'busy', 'no-answer'],
         statusCallbackMethod: 'POST',
         machineDetection: 'DetectMessageEnd',
