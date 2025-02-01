@@ -119,7 +119,6 @@ export async function registerOutboundRoutes(fastify) {
               console.error("Error en la consulta SQL:", err);
               return connection.rollback(() => {
                 connection.release();
-                reject(err);
               });
             }
 
@@ -277,7 +276,6 @@ export async function registerOutboundRoutes(fastify) {
       pool.getConnection((err, connection) => {
         if (err) {
           console.error("Error al obtener la conexión:", err);
-          return reject(err); // Rechaza la promesa si hay error al obtener conexión
         }
 
         const query = "SELECT status FROM StatusBot LIMIT 1"; // Consulta para obtener el status
@@ -286,7 +284,6 @@ export async function registerOutboundRoutes(fastify) {
           connection.release(); // Libera la conexión inmediatamente después de la consulta
           if (err) {
             console.error("Error en la consulta SQL:", err);
-            return reject(err); // Rechaza la promesa si ocurre un error en la consulta
           }
 
           if (result.length > 0) {
