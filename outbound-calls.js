@@ -109,7 +109,7 @@ export async function registerOutboundRoutes(fastify) {
 
           const query = `
             SELECT nombre, numero
-            FROM NuevosNumeros
+            FROM NuevosNumerosTest
             ORDER BY id ASC
             LIMIT 1
           `;
