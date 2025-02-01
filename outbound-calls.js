@@ -332,7 +332,7 @@ export async function registerOutboundRoutes(fastify) {
             return realizarLlamada();  // Call next number
         }
 
-        const formattedNumber = globalNumber.startsWith('+52') ? globalNumber : `+${globalNumber}`;
+        const formattedNumber = numero.startsWith('+52') ? numero : `+${numero}`;
 
         // Attempt to make the call
         const call = await twilioClient.calls.create({
