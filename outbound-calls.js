@@ -322,16 +322,9 @@ export async function registerOutboundRoutes(fastify) {
         globalName = nombre;
         globalNumber = numero;
 
-        // Ensure numero is a valid string
         if (!nombre || !numero) {
             console.log("No hay más números disponibles.");
             return;
-        }
-
-        if (typeof numero !== "string") {
-            console.log(`Número inválido detectado: ${numero}, eliminándolo...`);
-            await eliminarNumeros(globalNumber);
-            return realizarLlamada();  // Call next number
         }
 
         const formattedNumber = numero.startsWith("+52") ? numero : `+${numero}`;
