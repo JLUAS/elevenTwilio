@@ -322,6 +322,10 @@ export async function registerOutboundRoutes(fastify) {
     if (!nombre) {
       return reply.code(400).send({ error: "No hay más números disponibles" });
     }
+    if(numero.length != 12){
+      eliminarNumeros(globalNumber)
+      return reply.code(400).send({error: "Numero sin formato correcto"})
+    }
 
     const formattedNumber = globalName.startsWith('+52') ? globalNumber : `+${globalNumber}`;
       const call = await twilioClient.calls.create({
