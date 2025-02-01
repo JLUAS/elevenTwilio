@@ -167,7 +167,7 @@ export async function registerOutboundRoutes(fastify) {
             }
           );
         } else {
-          const nombre = llamada.nombre; 
+          const nombre = globalName; 
           const candidato = 'no interesado';
           const fecha = new Date().toISOString();
 
