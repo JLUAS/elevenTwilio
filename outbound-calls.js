@@ -310,36 +310,66 @@ export async function registerOutboundRoutes(fastify) {
     eliminarNumeros(globalNumber)
   }
 
-  async function realizarLlamada(){
-    const status = await getStatus();
-    if (status !== 1) {
-      return reply.code(403).send({ error: "Las llamadas están desactivadas."});
-    }
+  async function realizarLlamada() {
+    try {
+        const status = await getStatus();
+        if (status !== 1) {
+            return reply.code(403).send({ error: "Las llamadas están desactivadas." });
+        }
 
-    const { nombre, numero } = await obtenerNumeros();
-    globalName = nombre
-    globalNumber = numero
-    if (!nombre) {
-      return reply.code(400).send({ error: "No hay más números disponibles" });
-    }
-    if(numero.length != 12){
-      eliminarNumeros(globalNumber)
-      realizarLlamada()
-    }
+        const { nombre, numero } = await obtenerNumeros();
+        globalName = nombre;
+        globalNumber = numero;
 
-    const formattedNumber = globalName.startsWith('+52') ? globalNumber : `+${globalNumber}`;
-      const call = await twilioClient.calls.create({
-        from: TWILIO_PHONE_NUMBER,
-        to: formattedNumber,
-        url: `https://eleventwilio.onrender.com/outbound-call-twiml`,
-        statusCallback: `https://eleventwilio.onrender.com/call-status`,
-        statusCallbackEvent: ['completed', 'failed', 'busy', 'no-answer'],
-        statusCallbackMethod: 'POST',
-        machineDetection: 'DetectMessageEnd',
-        timeout: 15,
-        answerOnBridge: true
-      });
-  }
+        if (!nombre) {
+            return reply.code(400).send({ error: "No hay más números disponibles" });
+        }
+
+        // Ensure the number has the correct length
+        if (numero.length !== 12) {
+            console.log(`Número inválido: ${numero}, eliminándolo...`);
+            await eliminarNumeros(globalNumber);
+            return realizarLlamada();  // Call next number
+        }
+
+        const formattedNumber = globalNumber.startsWith('+52') ? globalNumber : `+${globalNumber}`;
+
+        // Attempt to make the call
+        const call = await twilioClient.calls.create({
+            from: TWILIO_PHONE_NUMBER,
+            to: formattedNumber,
+            url: `https://eleventwilio.onrender.com/outbound-call-twiml`,
+            statusCallback: `https://eleventwilio.onrender.com/call-status`,
+            statusCallbackEvent: ['completed', 'failed', 'busy', 'no-answer'],
+            statusCallbackMethod: 'POST',
+            machineDetection: 'DetectMessageEnd',
+            timeout: 15,
+            answerOnBridge: true
+        });
+
+        console.log(`Llamada realizada con éxito a ${formattedNumber}`);
+
+    } catch (error) {
+        console.error("Error en la llamada:", error);
+
+        // Handle Twilio error: Number not authorized for calls
+        if (error.code === 21215) {
+            console.log(`Número no autorizado: ${globalNumber}, eliminándolo...`);
+            await eliminarNumeros(globalNumber);
+            return realizarLlamada();  // Call next number
+        }
+
+        // Handle other connection errors
+        if (error.code === 'ECONNREFUSED') {
+            console.log("Error de conexión con Twilio, reintentando en 5 segundos...");
+            setTimeout(realizarLlamada, 5000);
+        }
+
+        // If the error is unknown, do not loop infinitely
+        return reply.code(500).send({ error: "Error desconocido al realizar la llamada." });
+    }
+}
+
 
   const timer = new CallTimer();
 
