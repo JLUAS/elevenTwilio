@@ -103,14 +103,12 @@ export async function registerOutboundRoutes(fastify) {
       pool.getConnection((err, connection) => {
         if (err) {
           console.error("Error al obtener la conexión:", err);
-          return reject(err);
         }
 
         connection.beginTransaction((err) => {
           if (err) {
             console.error("Error al iniciar la transacción:", err);
             connection.release();
-            return reject(err);
           }
 
           const query = `
@@ -210,12 +208,10 @@ export async function registerOutboundRoutes(fastify) {
       pool.getConnection((err, connection) => {
         if (err) {
           console.error("Error al obtener la conexión:", err);
-          return reject(err);
         }
         connection.beginTransaction((err) => {
           if (err) {
             connection.release();
-            return reject(err);
           }
           const fecha = new Date().toISOString();
           const query =
@@ -288,7 +284,6 @@ export async function registerOutboundRoutes(fastify) {
       pool.getConnection((err, connection) => {
         if (err) {
           console.error("Error al obtener la conexión:", err);
-          return reject(err);
         }
 
         const query = "SELECT status FROM StatusBot LIMIT 1";
@@ -297,7 +292,6 @@ export async function registerOutboundRoutes(fastify) {
           connection.release();
           if (err) {
             console.error("Error en la consulta SQL:", err);
-            return reject(err);
           }
 
           if (result.length > 0) {
