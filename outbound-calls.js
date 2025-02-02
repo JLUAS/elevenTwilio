@@ -24,7 +24,13 @@ export async function registerOutboundRoutes(fastify) {
     database: database,
     connectionLimit: 10,
   };
-  if (!ELEVENLABS_API_KEY || !ELEVENLABS_AGENT_ID || !TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+  if (
+    !ELEVENLABS_API_KEY ||
+    !ELEVENLABS_AGENT_ID ||
+    !TWILIO_ACCOUNT_SID ||
+    !TWILIO_AUTH_TOKEN ||
+    !TWILIO_PHONE_NUMBER
+  ) {
     console.error("Missing required environment variables");
     throw new Error("Missing required environment variables");
   }
@@ -74,13 +80,11 @@ export async function registerOutboundRoutes(fastify) {
     console.error("MySQL error: ", err);
   });
 
-  let globalCallSid = undefined
-
-  let globalName = undefined
-
-  let globalNumber = undefined
-
-  let inProgress = undefined
+  // Variables globales para el manejo de la llamada
+  let globalCallSid = undefined;
+  let globalName = undefined;
+  let globalNumber = undefined;
+  let inProgress = false;
 
   function handleDisconnect() {
     pool.getConnection((err, connection) => {
@@ -99,12 +103,14 @@ export async function registerOutboundRoutes(fastify) {
       pool.getConnection((err, connection) => {
         if (err) {
           console.error("Error al obtener la conexión:", err);
+          return reject(err);
         }
 
         connection.beginTransaction((err) => {
           if (err) {
             console.error("Error al iniciar la transacción:", err);
             connection.release();
+            return reject(err);
           }
 
           const query = `
@@ -119,6 +125,7 @@ export async function registerOutboundRoutes(fastify) {
               console.error("Error en la consulta SQL:", err);
               return connection.rollback(() => {
                 connection.release();
+                reject(err);
               });
             }
 
@@ -130,6 +137,7 @@ export async function registerOutboundRoutes(fastify) {
                   console.error("Error al realizar commit:", err);
                   return connection.rollback(() => {
                     connection.release();
+                    reject(err);
                   });
                 }
                 connection.release();
@@ -139,6 +147,7 @@ export async function registerOutboundRoutes(fastify) {
               console.log("No se encontró ningún registro.");
               connection.rollback(() => {
                 connection.release();
+                resolve({ nombre: null, numero: null });
               });
             }
           });
@@ -167,13 +176,13 @@ export async function registerOutboundRoutes(fastify) {
             }
           );
         } else {
-          const nombre = globalName; 
+          const nombreInsert = globalName;
           const candidato = 'no interesado';
           const fecha = new Date().toISOString();
 
           pool.query(
             'INSERT INTO NumerosContactadosTest (nombre, numero, candidato, tiempo, fecha) VALUES (?, ?, ?, ?, ?)',
-            [nombre, numero, candidato, tiempo, fecha],
+            [nombreInsert, numero, candidato, tiempo, fecha],
             (err) => {
               if (err) console.error("Error insertando en NumerosContactadosTest:", err);
             }
@@ -189,10 +198,11 @@ export async function registerOutboundRoutes(fastify) {
       if (err) {
         console.error("Error borrando usuario:", err);
       } else {
-        console.log("Numero correctamente eliminado")
+        console.log("Número correctamente eliminado");
       }
+      // Una vez eliminados, se intenta realizar la siguiente llamada
+      realizarLlamada();
     });
-    realizarLlamada()
   }
 
   function insertarNumeroInaccesible(numero, nombre) {
@@ -200,10 +210,12 @@ export async function registerOutboundRoutes(fastify) {
       pool.getConnection((err, connection) => {
         if (err) {
           console.error("Error al obtener la conexión:", err);
+          return reject(err);
         }
         connection.beginTransaction((err) => {
           if (err) {
             connection.release();
+            return reject(err);
           }
           const fecha = new Date().toISOString();
           const query =
@@ -212,15 +224,18 @@ export async function registerOutboundRoutes(fastify) {
             if (err) {
               connection.rollback(() => {
                 connection.release();
+                reject(err);
               });
             } else {
               connection.commit((err) => {
                 if (err) {
                   connection.rollback(() => {
                     connection.release();
+                    reject(err);
                   });
                 } else {
                   connection.release();
+                  resolve(result);
                 }
               });
             }
@@ -236,31 +251,28 @@ export async function registerOutboundRoutes(fastify) {
       this.endTime = null;
     }
 
-    // Llamar esta función al inicio de la llamada
+    // Iniciar el temporizador de la llamada
     startCall() {
       this.startTime = new Date();
-      
     }
 
-    // Llamar esta función al finalizar la llamada
+    // Finalizar la llamada y obtener el tiempo transcurrido
     endCall() {
       if (!this.startTime) {
         console.error("Error: La llamada no ha sido iniciada.");
         return null;
       }
       this.endTime = new Date();
-      const duration = this.calculateDuration();
-      return duration; // Duración en formato "hh:mm:ss"
+      return this.calculateDuration();
     }
 
-    // Calcula la duración de la llamada
     calculateDuration() {
       if (!this.startTime || !this.endTime) {
         console.error("Error: Falta la hora de inicio o fin de la llamada.");
         return null;
       }
 
-      const diffInMs = this.endTime - this.startTime; // Diferencia en milisegundos
+      const diffInMs = this.endTime - this.startTime;
       const seconds = Math.floor((diffInMs / 1000) % 60);
       const minutes = Math.floor((diffInMs / (1000 * 60)) % 60);
       const hours = Math.floor((diffInMs / (1000 * 60 * 60)) % 24);
@@ -276,21 +288,23 @@ export async function registerOutboundRoutes(fastify) {
       pool.getConnection((err, connection) => {
         if (err) {
           console.error("Error al obtener la conexión:", err);
+          return reject(err);
         }
 
-        const query = "SELECT status FROM StatusBot LIMIT 1"; // Consulta para obtener el status
+        const query = "SELECT status FROM StatusBot LIMIT 1";
 
         connection.query(query, (err, result) => {
-          connection.release(); // Libera la conexión inmediatamente después de la consulta
+          connection.release();
           if (err) {
             console.error("Error en la consulta SQL:", err);
+            return reject(err);
           }
 
           if (result.length > 0) {
-            resolve(result[0].status); // Resuelve la promesa con el valor de status
+            resolve(result[0].status);
           } else {
             console.log("No se encontró ningún registro en StatusBot.");
-            resolve(null); // Si no hay registros, resuelve con null
+            resolve(null);
           }
         });
       });
@@ -306,75 +320,82 @@ export async function registerOutboundRoutes(fastify) {
       .update({ status: "completed" })
       .then(() => console.log("Llamada terminada correctamente:", callSid))
       .catch(err => console.error("Error terminando la llamada:", err));
-    inProgress = false
-    eliminarNumeros(globalNumber)
+    // Restablecer el flag de llamada en progreso
+    inProgress = false;
+    eliminarNumeros(globalNumber);
   }
 
   async function realizarLlamada() {
-    try {
-        const status = await getStatus();
-        if (status !== 1) {
-            console.log("Las llamadas están desactivadas.");
-            return;
-        }
-
-        const { nombre, numero } = await obtenerNumeros();
-        globalName = nombre;
-        globalNumber = numero;
-
-        if (!nombre || !numero) {
-            console.log("No hay más números disponibles.");
-            return;
-        }
-
-        const formattedNumber = numero.startsWith("+52") ? numero : `+${numero}`;
-
-        // Attempt to make the call
-        const call = await twilioClient.calls.create({
-            from: TWILIO_PHONE_NUMBER,
-            to: formattedNumber,
-            url: `https://eleventwilio.onrender.com/outbound-call-twiml`,
-            statusCallback: `https://eleventwilio.onrender.com/call-status`,
-            statusCallbackEvent: ["completed", "failed", "busy", "no-answer"],
-            statusCallbackMethod: "POST",
-            machineDetection: "DetectMessageEnd",
-            timeout: 15,
-            answerOnBridge: true
-        });
-
-        console.log(`Llamada realizada con éxito a ${formattedNumber}`);
-
-    } catch (error) {
-        console.error("Error en la llamada:", error);
-
-        // Handle Twilio error: Number not authorized for calls
-        if (error.code === 21215) {
-            console.log(`Número no autorizado: ${globalNumber}, eliminándolo...`);
-            await eliminarNumeros(globalNumber);
-            return realizarLlamada();  // Call next number
-        }
-
-        // Handle connection issues
-        if (error.code === "ECONNREFUSED") {
-            console.log("Error de conexión con Twilio, reintentando en 5 segundos...");
-            setTimeout(realizarLlamada, 5000);
-        }
-
-        // Generic error handling
-        console.log("Error desconocido al realizar la llamada.");
+    // Control de concurrencia: si ya hay una llamada en curso, se omite la ejecución
+    if (inProgress) {
+      console.log("Ya hay una llamada en progreso, esperando a que termine...");
+      return;
     }
-}
+    inProgress = true;
 
+    try {
+      const status = await getStatus();
+      if (status !== 1) {
+        console.log("Las llamadas están desactivadas.");
+        return;
+      }
 
+      const { nombre, numero } = await obtenerNumeros();
+      globalName = nombre;
+      globalNumber = numero;
+
+      if (!nombre || !numero) {
+        console.log("No hay más números disponibles.");
+        return;
+      }
+
+      const formattedNumber = numero.startsWith("+52") ? numero : `+${numero}`;
+
+      // Realizar la llamada con Twilio
+      const call = await twilioClient.calls.create({
+        from: TWILIO_PHONE_NUMBER,
+        to: formattedNumber,
+        url: `https://eleventwilio.onrender.com/outbound-call-twiml`,
+        statusCallback: `https://eleventwilio.onrender.com/call-status`,
+        statusCallbackEvent: ["completed", "failed", "busy", "no-answer"],
+        statusCallbackMethod: "POST",
+        machineDetection: "DetectMessageEnd",
+        timeout: 15,
+        answerOnBridge: true,
+      });
+
+      globalCallSid = call.sid;
+      console.log(`Llamada realizada con éxito a ${formattedNumber}`);
+    } catch (error) {
+      console.error("Error en la llamada:", error);
+
+      // Manejo de errores específicos de Twilio
+      if (error.code === 21215) {
+        console.log(`Número no autorizado: ${globalNumber}, eliminándolo...`);
+        await eliminarNumeros(globalNumber);
+        // Se intenta la siguiente llamada
+        return realizarLlamada();
+      }
+
+      if (error.code === "ECONNREFUSED") {
+        console.log("Error de conexión con Twilio, reintentando en 5 segundos...");
+        setTimeout(realizarLlamada, 5000);
+      }
+
+      console.log("Error desconocido al realizar la llamada.");
+    } finally {
+      inProgress = false;
+    }
+  }
 
   const timer = new CallTimer();
-
   handleDisconnect();
 
   fastify.all("/endCall", async (req, res) => {
-    const{contexto}=req.body
-    console.log(contexto)
-    endCall(globalCallSid)
+    const { contexto } = req.body;
+    console.log(contexto);
+    endCall(globalCallSid);
+    res.send({ success: true });
   });
 
   fastify.all("/register/call", async (req, res) => {
@@ -396,7 +417,7 @@ export async function registerOutboundRoutes(fastify) {
             (err, result) => {
               if (err) {
                 console.error("Error en la consulta SQL:", err);
-                connection.rollback(() => {
+                return connection.rollback(() => {
                   connection.release();
                   return res.status(500).send("Error en la base de datos.");
                 });
@@ -409,9 +430,7 @@ export async function registerOutboundRoutes(fastify) {
                     });
                   } else {
                     connection.release();
-                    res
-                      .status(201)
-                      .send("Numero contactado registrado correctamente");
+                    res.status(201).send("Número contactado registrado correctamente");
                   }
                 });
               }
@@ -423,41 +442,40 @@ export async function registerOutboundRoutes(fastify) {
   });
 
   fastify.all("/outbound-call", async (request, reply) => {
-    realizarLlamada()
+    realizarLlamada();
+    reply.send({ success: true });
   });
 
   fastify.all("/call-status", async (request, reply) => {
     try {
       const { CallSid, CallStatus, AnsweredBy, Duration } = request.body;
-      if(Duration >= 1 && AnsweredBy != "human"){
-        endCall()
+      if (Duration >= 1 && AnsweredBy !== "human") {
+        endCall(CallSid);
       }
       switch (CallStatus) {
-        case 'in-progress':
-          console.log("Llamada en progreso.")
-        break;
-        case 'completed':
-          console.log("Completada")
-          insertarTiempo(globalName,globalNumber)
-          endCall(CallSid) 
-        break;
-
-        case 'busy':
-          console.log("Ocupado")
-          insertarNumeroInaccesible(globalName,globalNumber)
-          endCall(CallSid)
-        break;
-        case 'no-answer':
-          console.log("No contesto")
-          insertarNumeroInaccesible(globalName,globalNumber)
-          endCall(CallSid)
-        break;
-        case 'failed':
-          console.log("Llamada fallo")
-          insertarNumeroInaccesible(globalName,globalNumber)
-          endCall(CallSid)
-        break;
-
+        case "in-progress":
+          console.log("Llamada en progreso.");
+          break;
+        case "completed":
+          console.log("Completada");
+          insertarTiempo(globalName, globalNumber);
+          endCall(CallSid);
+          break;
+        case "busy":
+          console.log("Ocupado");
+          insertarNumeroInaccesible(globalNumber, globalName);
+          endCall(CallSid);
+          break;
+        case "no-answer":
+          console.log("No contestó");
+          insertarNumeroInaccesible(globalNumber, globalName);
+          endCall(CallSid);
+          break;
+        case "failed":
+          console.log("Llamada falló");
+          insertarNumeroInaccesible(globalNumber, globalName);
+          endCall(CallSid);
+          break;
         default:
           console.log(`Estado no manejado: ${CallStatus}`);
       }
@@ -472,7 +490,7 @@ export async function registerOutboundRoutes(fastify) {
   // TwiML route for outbound calls
   fastify.all("/outbound-call-twiml", async (request, reply) => {
     const prompt =
-      "Eres un agente que vende punto de venta de Getnet y siempre busca cerrar una venta mas, eres amable y profesional, asi mismo intentas siempre hacer preguntas cortas para determinar si es o no un prospecto para venta. Tienes un objetivo, el cual es decidir si es o no un prospecto, si es un prospecto debes recopilar su numero, y su nombre, mencionandole que en un momento le contactaran para cerrar el proceso de venta.";
+      "Eres un agente que vende punto de venta de Getnet y siempre busca cerrar una venta más. Eres amable y profesional, y siempre haces preguntas cortas para determinar si se trata de un prospecto para venta. Si es prospecto, recopila su número y nombre, mencionando que en un momento te contactarán para cerrar el proceso de venta.";
 
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
       <Response>
@@ -493,35 +511,31 @@ export async function registerOutboundRoutes(fastify) {
       { websocket: true },
       async (ws, req) => {
         console.info("[Server] Twilio connected to outbound media stream");
-        // Variables to track the call
+        // Variables para el manejo del stream
         let streamSid = null;
         let callSid = null;
         let elevenLabsWs = null;
         let customParameters = null;
         let lastAudioTimestamp = Date.now();
 
-        // Handle WebSocket errors
         ws.on("error", console.error);
- 
+
         const setupElevenLabs = async () => {
           try {
-
             const signedUrl = await getSignedUrl();
             elevenLabsWs = new WebSocket(signedUrl);
 
             elevenLabsWs.on("open", () => {
               console.log("[ElevenLabs] Connected to Conversational AI");
-
-              // Send initial configuration with prompt and first message
               const initialConfig = {
                 type: "conversation_initiation_client_data",
                 conversation_config_override: {
                   agent: {
                     prompt: {
-                      prompt: `Eres un agente que vende punto de venta de Getnet y siempre busca cerrar una venta mas, eres amable y profesional, así mismo intentas siempre hacer preguntas cortas para determinar si es o no un prospecto para venta. Tienes un objetivo, el cual es decidir si es o no un prospecto, si es un prospecto debes usar su numero, y su nombre, mencionándole que en un momento le contactaran para cerrar el proceso de venta. El cliente se llama ${globalName} y su numero es ${globalNumber}Si  detectas una contestadora automática con opciones numéricas o no hay ruido por 10 segundos, usa el tool 'end'`,
+                      prompt: `Eres un agente que vende punto de venta de Getnet y siempre busca cerrar una venta más. Eres amable y profesional, haces preguntas cortas para determinar si se trata de un prospecto para venta. El cliente se llama ${globalName} y su número es ${globalNumber}. Si detectas contestadora automática con opciones numéricas o ausencia de audio por 10 segundos, usa el tool 'end'.`,
                     },
                     first_message:
-                      "Hola soy Karyme te hablo de Getnet, y quisiera ofrecerte una de nuestras terminales, ¿te interesaría saber un poco mas sobre nuestra propuesta?",
+                      "Hola, soy Karyme de Getnet. ¿Te interesaría conocer nuestra propuesta de terminal de pago?",
                   },
                 },
               };
@@ -530,64 +544,47 @@ export async function registerOutboundRoutes(fastify) {
                 "[ElevenLabs] Sending initial config with prompt:",
                 initialConfig.conversation_config_override.agent.prompt.prompt
               );
-
-              // Send the configuration to ElevenLabs
               elevenLabsWs.send(JSON.stringify(initialConfig));
             });
 
             elevenLabsWs.on("message", (data) => {
               try {
                 const message = JSON.parse(data);
-
                 switch (message.type) {
                   case "conversation_initiation_metadata":
                     console.log("[ElevenLabs] Received initiation metadata");
                     timer.startCall();
-                  break;
+                    break;
                   case "agent_response":
-                  
-                  console.log("Agent response",message)
-                  break
+                    console.log("Agent response", message);
+                    break;
                   case "audio":
                     if (streamSid) {
                       if (message.audio?.chunk) {
                         const audioData = {
                           event: "media",
                           streamSid,
-                          media: {
-                            payload: message.audio.chunk,
-                          },
+                          media: { payload: message.audio.chunk },
                         };
                         ws.send(JSON.stringify(audioData));
                       } else if (message.audio_event?.audio_base_64) {
                         const audioData = {
                           event: "media",
                           streamSid,
-                          media: {
-                            payload: message.audio_event.audio_base_64,
-                          },
+                          media: { payload: message.audio_event.audio_base_64 },
                         };
                         ws.send(JSON.stringify(audioData));
                       }
                     } else {
-                      console.log(
-                        "[ElevenLabs] Received audio but no StreamSid yet"
-                      );
+                      console.log("[ElevenLabs] Received audio but no StreamSid yet");
                     }
-                  break;
-
+                    break;
                   case "interruption":
                     lastAudioTimestamp = Date.now();
                     if (streamSid) {
-                      ws.send(
-                        JSON.stringify({
-                          event: "clear",
-                          streamSid,
-                        })
-                      );
+                      ws.send(JSON.stringify({ event: "clear", streamSid }));
                     }
-                  break;
-
+                    break;
                   case "ping":
                     if (message.ping_event?.event_id) {
                       elevenLabsWs.send(
@@ -598,11 +595,8 @@ export async function registerOutboundRoutes(fastify) {
                       );
                     }
                     break;
-
                   default:
-                    console.log(
-                      `[ElevenLabs] Unhandled message type: ${message.type}`
-                    );
+                    console.log(`[ElevenLabs] Unhandled message type: ${message.type}`);
                 }
               } catch (error) {
                 console.error("[ElevenLabs] Error processing message:", error);
@@ -623,47 +617,39 @@ export async function registerOutboundRoutes(fastify) {
 
         setupElevenLabs();
 
-         // Handle messages from Twilio
+        // Manejo de mensajes de Twilio
         ws.on("message", (message) => {
           try {
             const msg = JSON.parse(message);
             console.log(`[Twilio] Received event: ${msg.event}`);
             switch (msg.event) {
               case "start":
-                timer.startCall()
-                inProgress = true
+                timer.startCall();
+                inProgress = true;
                 streamSid = msg.start.streamSid;
                 callSid = msg.start.callSid;
                 globalCallSid = msg.start.callSid;
                 customParameters = msg.start.customParameters;
-                console.log(
-                  `[Twilio] Stream started - StreamSid: ${streamSid}, CallSid: ${callSid}`
-                );
+                console.log(`[Twilio] Stream started - StreamSid: ${streamSid}, CallSid: ${callSid}`);
                 console.log("[Twilio] Start parameters:", customParameters);
-              break;
-
+                break;
               case "media":
                 if (elevenLabsWs?.readyState === WebSocket.OPEN) {
                   const audioMessage = {
-                    user_audio_chunk: Buffer.from(
-                      msg.media.payload,
-                      "base64"
-                    ).toString("base64"),
+                    user_audio_chunk: Buffer.from(msg.media.payload, "base64").toString("base64"),
                   };
                   elevenLabsWs.send(JSON.stringify(audioMessage));
                 }
-              break;
-
+                break;
               case "stop":
                 console.log(`[Twilio] Stream ${streamSid} ended`);
                 if (elevenLabsWs?.readyState === WebSocket.OPEN) {
                   elevenLabsWs.close();
                 }
-                if(callSid) {
-                  endCall(callSid)
+                if (callSid) {
+                  endCall(callSid);
                 }
-              break;
-
+                break;
               default:
                 console.log(`[Twilio] Unhandled event: ${msg.event}`);
             }
@@ -671,17 +657,17 @@ export async function registerOutboundRoutes(fastify) {
             console.error("[Twilio] Error processing message:", error);
           }
         });
-        
+
         setInterval(() => {
           if (Date.now() - lastAudioTimestamp > 20000 && inProgress) {
-              console.log("[Silence Detection] No user audio for 10 seconds");
-              if(globalCallSid){
-                endCall(globalCallSid)
-                lastAudioTimestamp = Date.now();
-              }
+            console.log("[Silence Detection] No user audio for 10 seconds");
+            if (globalCallSid) {
+              endCall(globalCallSid);
+              lastAudioTimestamp = Date.now();
+            }
           }
         }, 1000);
-        // Handle WebSocket closure
+
         ws.on("close", () => {
           console.log("[Twilio] Client disconnected");
           if (elevenLabsWs?.readyState === WebSocket.OPEN) {
