@@ -470,6 +470,11 @@ export async function registerOutboundRoutes(fastify) {
           insertarNumeroInaccesible(globalNumber, globalName);
           endCall(CallSid);
           break;
+        case "canceled":
+          console.log("Llamada cancelada");
+          insertarNumeroInaccesible(globalNumber, globalName);
+          endCall(CallSid);
+        break;
         default:
           console.log(`Estado no manejado: ${CallStatus}`);
       }
