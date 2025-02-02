@@ -123,7 +123,7 @@ export async function registerOutboundRoutes(fastify) {
               console.error("Error en la consulta SQL:", err);
               return connection.rollback(() => {
                 connection.release();
-                reject(err);
+                
               });
             }
 
@@ -135,7 +135,7 @@ export async function registerOutboundRoutes(fastify) {
                   console.error("Error al realizar commit:", err);
                   return connection.rollback(() => {
                     connection.release();
-                    reject(err);
+                    
                   });
                 }
                 connection.release();
@@ -220,14 +220,14 @@ export async function registerOutboundRoutes(fastify) {
             if (err) {
               connection.rollback(() => {
                 connection.release();
-                reject(err);
+                
               });
             } else {
               connection.commit((err) => {
                 if (err) {
                   connection.rollback(() => {
                     connection.release();
-                    reject(err);
+                    
                   });
                 } else {
                   connection.release();
