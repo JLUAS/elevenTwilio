@@ -499,7 +499,7 @@ export async function registerOutboundRoutes(fastify) {
 
   // Endpoint para finalizar manualmente una llamada.
   fastify.all("/endCall", async (req, res) => {
-    const { callSid } = req.body;
+    const callSid = activeCalls.keys().next().value;
     if (!callSid) {
       return res.status(400).send({ error: "Falta callSid en la petición." });
     }
